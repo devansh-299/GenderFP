@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">genderfp</string>
+    <string name="splashmessage">We will begin in a moment...</string>
+    <string name="appname">GenderFP</string>
+    <string name="camera_permission_granted">camera permission granted</string>
+    <string name="camera_permission_denied">camera permission denied</string>
+    <string name="data">data</string>
+</resources>
