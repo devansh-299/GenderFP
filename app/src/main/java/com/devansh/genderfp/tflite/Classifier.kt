@@ -19,11 +19,12 @@ class Classifier(assetManager: AssetManager, modelPath: String, labelPath: Strin
     private var lableList: List<String>
     private val INPUT_SIZE: Int = inputSize
     private val PIXEL_SIZE: Int = 3
-    private val MAX_RESULTS = 3
-    private val THRESHOLD = 0.5f
+    private val MAX_RESULTS = 1
+    private val THRESHOLD = 0.1f
 
-    data class Gender(
-            var gender : String = "",
+    data class Recognition(
+            var id : String = "",
+            var title :String = "",
             var confidence : Float = 0F
     )
 
@@ -50,12 +51,9 @@ class Classifier(assetManager: AssetManager, modelPath: String, labelPath: Strin
     }
 
 
-    fun recognizeImage(bitmap: Bitmap): List<Gender> {
+    fun recognizeImage(bitmap: Bitmap): List<Recognition> {
         val scaledBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_SIZE, INPUT_SIZE, false)
         val byteBuffer = convertBitmapToByteBuffer(scaledBitmap)
-
-        Log.i("ByteBuffer",byteBuffer.toString())
-
         val result = Array(1) { FloatArray(lableList.size) }
         interpreter.run(byteBuffer, result)
         return getSortedResult(result)
@@ -84,26 +82,28 @@ class Classifier(assetManager: AssetManager, modelPath: String, labelPath: Strin
         return byteBuffer
     }
 
-    private fun getSortedResult(labelProbArray: Array<FloatArray>): List<Gender> {
+    private fun getSortedResult(labelProbArray: Array<FloatArray>): List<Classifier.Recognition> {
+        Log.d("Classifier", "List Size:(%d, %d, %d)".format(labelProbArray.size,labelProbArray[0].size,lableList.size))
 
         val pq = PriorityQueue(
                 MAX_RESULTS,
-                Comparator<Gender> {
-                    (_,confidence1), (_,confidence2)
+                Comparator<Classifier.Recognition> {
+                    (_, _, confidence1), (_, _, confidence2)
                     -> confidence1.compareTo(confidence2) * -1
                 })
 
         for (i in lableList.indices) {
             val confidence = labelProbArray[0][i]
             if (confidence >= THRESHOLD) {
-                pq.add(Gender("" + i,
-                        confidence)
+                pq.add(Classifier.Recognition("" + i,
+                        if (lableList.size > i) lableList[i] else "Unknown", confidence)
                 )
             }
         }
+        Log.d("Classifier", "pqsize:(%d)".format(pq.size))
 
-        val recognitions = ArrayList<Gender>()
-        val recognitionsSize = min(pq.size, MAX_RESULTS)
+        val recognitions = ArrayList<Classifier.Recognition>()
+        val recognitionsSize = Math.min(pq.size, MAX_RESULTS)
         for (i in 0 until recognitionsSize) {
             recognitions.add(pq.poll())
         }

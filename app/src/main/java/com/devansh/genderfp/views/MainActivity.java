@@ -14,16 +14,19 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.devansh.genderfp.R;
 import com.devansh.genderfp.tflite.Classifier;
 import com.devansh.genderfp.util.ImageLoader;
-
 import java.util.List;
 
 
@@ -35,15 +38,26 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.question_b)
     Button bQuestion;
 
-    @BindView(R.id.result_tv)
-    TextView tvResult;
+    @BindView(R.id.ll_get_image)
+    LinearLayout getImageLayout;
+
+    @BindView(R.id.ll_show_result)
+    LinearLayout showResultLayout;
+
+    @BindView(R.id.iv_result_gender)
+    ImageView resultGenderImageView;
+
+    @BindView(R.id.tv_result_gender)
+    TextView tvResultGender;
+
+    Animation fadeInAnim;
 
     private static final int MY_CAMERA_PERMISSION_CODE = 100;
     private static final int CAMERA_REQUEST = 299;
     Bitmap imageBitmap;
     Bitmap tempBitmap;
     private static final int INPUT_SIZE = 224;
-    public static final String MODEL_PATH = "fingerprint.tflite";
+    public static final String MODEL_PATH = "fingerprint_mobilenet.tflite";
     private static final String LABEL_PATH = "labels.txt";
 
     @Override
@@ -51,12 +65,18 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+
+        fadeInAnim = AnimationUtils.loadAnimation(getApplicationContext(),
+                R.anim.fade_in_anim);
+
+        getImageLayout.setVisibility(View.VISIBLE);
+        showResultLayout.setVisibility(View.GONE);
     }
 
     @OnClick(R.id.clickphoto)
     public void getPhoto () {
-        tvResult.setVisibility(View.GONE);
         bQuestion.setVisibility(View.VISIBLE);
+        ivClick.startAnimation(fadeInAnim);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(
                     Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -71,16 +91,23 @@ public class MainActivity extends AppCompatActivity {
 
     @OnClick(R.id.question_b)
     public void getResults () {
-        Classifier myClassifier = new Classifier(getAssets(),
-                MODEL_PATH,LABEL_PATH,
-                INPUT_SIZE);
-        List<Classifier.Gender  > result = myClassifier.
-                recognizeImage(tempBitmap);
+       bQuestion.startAnimation(fadeInAnim);
         try {
-            tvResult.setText(result.get(0).getGender());
-            bQuestion.setVisibility(View.GONE);
+        Classifier myClassifier = new Classifier(getAssets(),
+                MODEL_PATH, LABEL_PATH,
+                INPUT_SIZE);
+        List<Classifier.Recognition> result = myClassifier.
+                recognizeImage(tempBitmap);
+            String classifierResult = result.get(0).getId();
+            String confidence = Float.toString(result.get(0).getConfidence());
+            Toast.makeText(this,"with "+confidence+" confidence",
+                    Toast.LENGTH_LONG).show();
+            updateUi(classifierResult);
         } catch (Exception e) {
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+            if(e instanceof IllegalArgumentException){
+                Toast.makeText(this, R.string.toast_message,Toast.LENGTH_SHORT).show();
+            }
+            Log.i("Classifier Error",e.getMessage());
         }
     }
 
@@ -118,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
                 resultCode == Activity.RESULT_OK) {
             imageBitmap = (Bitmap) data.getExtras()
                     .get(getString(R.string.data));
+            bQuestion.setBackgroundResource(R.drawable.button_background_image);
             tempBitmap = imageBitmap;
             ImageLoader il = new ImageLoader(
                     ivClick,
@@ -127,4 +155,21 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateUi(String result) {
+        getImageLayout.setVisibility(View.GONE);
+        showResultLayout.setVisibility(View.VISIBLE);
+        String resultGender = getString(R.string.male);
+        if(result.equals("1")){
+            resultGender = getString(R.string.female);
+            resultGenderImageView.setImageResource(R.drawable.female_result);
+        }
+        tvResultGender.setText(getString(R.string.supporting_result_string)+" "+resultGender);
+    }
+
+    @OnClick(R.id.bt_retry)
+    public void retry() {
+        getImageLayout.setVisibility(View.VISIBLE);
+        showResultLayout.setVisibility(View.GONE);
+        bQuestion.setBackgroundResource(R.drawable.tap_above);
+    }
 }

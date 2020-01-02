@@ -5,4 +5,8 @@
     <string name="camera_permission_granted">camera permission granted</string>
     <string name="camera_permission_denied">camera permission denied</string>
     <string name="data">data</string>
+    <string name="supporting_result_string">We indentified your gender as</string>
+    <string name="male">Male</string>
+    <string name="female">Female</string>
+    <string name="toast_message">Atleast give us your fingerprint :(</string>
 </resources>
